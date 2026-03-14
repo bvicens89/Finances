@@ -565,7 +565,7 @@ function setView(v) {
   const tableViews=["annual","monthly","inc-annual","inc-monthly"];
   document.getElementById("table-wrap").style.display = tableViews.includes(v)?"":"none";
   ["charts-view","balance-view","history-view"].forEach(id=>{
-    document.getElementById(id).style.display=(id===v+"-view")?"":"none";
+    document.getElementById(id).style.display=(id===v+"-view")?"block":"none";
   });
   document.getElementById("month-summary").classList.toggle("visible", v==="monthly"||v==="inc-monthly");
   document.getElementById("month-nav").classList.toggle("visible", v==="monthly"||v==="inc-monthly");
