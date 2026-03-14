@@ -530,14 +530,11 @@ let currentChartType = "bars";
 let editingYrKey = null; // for modal
 
 // ═══════════════════════════════════════════════
-// CLOUD SYNC — JSONBin.io
+// CLOUD SYNC — Firebase Realtime Database
 // ═══════════════════════════════════════════════
-const BIN_ID  = "69b565eaaa77b81da9e3f222";
-const API_KEY = "$2a$10$B.M/cRfZqjNwdZyJhI1feeTTriKY5/by2b5EPqWBfMCONl5HP0Ot6";
-const BIN_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+const FB_URL = "https://finances-65b9d-default-rtdb.firebaseio.com/despeses.json";
 
 let saveTimer = null;
-let cloudStatus = "ok"; // ok | saving | error
 
 function showStatus(msg, color) {
   const el = document.getElementById("sync-status");
@@ -547,21 +544,21 @@ function showStatus(msg, color) {
 async function load() {
   showStatus("⏳ Carregant...", "#aaa");
   try {
-    const r = await fetch(BIN_URL+"/latest", {
-      headers: {"X-Master-Key": API_KEY, "X-Bin-Meta": "false"}
-    });
+    const r = await fetch(FB_URL);
     if(!r.ok) throw new Error("HTTP "+r.status);
     const d = await r.json();
-    if(d.rows && d.cats) {
+    if(d && d.rows && d.cats) {
       rows = d.rows; cats = d.cats; histYears = d.histYears||[];
-      // also cache locally
       try { localStorage.setItem(SK, JSON.stringify({rows,cats,histYears})); } catch {}
       showStatus("☁️ Sincronitzat", "#4fcf7a");
     } else {
-      throw new Error("Dades buides");
+      // Firebase buit — usa defaults
+      rows = JSON.parse(JSON.stringify(DEFAULT_ROWS));
+      cats = JSON.parse(JSON.stringify(DEFAULT_CATS));
+      histYears = [];
+      showStatus("☁️ Base de dades nova", "#4fcf7a");
     }
   } catch(e) {
-    // fallback to localStorage
     showStatus("⚠️ Sense xarxa — dades locals", "#f7a44f");
     try {
       const s = localStorage.getItem(SK);
@@ -574,9 +571,9 @@ async function load() {
 async function pushToCloud() {
   showStatus("💾 Guardant...", "#7cb9ff");
   try {
-    const r = await fetch(BIN_URL, {
+    const r = await fetch(FB_URL, {
       method: "PUT",
-      headers: {"Content-Type":"application/json","X-Master-Key":API_KEY},
+      headers: {"Content-Type":"application/json"},
       body: JSON.stringify({rows,cats,histYears})
     });
     if(!r.ok) throw new Error("HTTP "+r.status);
@@ -584,12 +581,10 @@ async function pushToCloud() {
     showStatus("☁️ Sincronitzat", "#4fcf7a");
   } catch {
     showStatus("⚠️ Error guardant", "#f74f7a");
-    // still save locally
     try { localStorage.setItem(SK, JSON.stringify({rows,cats,histYears})); } catch {}
   }
 }
 
-// Debounced save — waits 1.5s after last change before pushing
 function save() {
   try { localStorage.setItem(SK, JSON.stringify({rows,cats,histYears})); } catch {}
   showStatus("✏️ Pendent de guardar...", "#aaa");
