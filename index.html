@@ -382,10 +382,15 @@ tr.add-row button:hover { background: #f0f5ff; color: #4f8ef7; }
       <h3 id="yr-modal-title">➕ Afegir any</h3>
       <button class="modal-close" onclick="closeYrModal()">×</button>
     </div>
-    <div class="modal-body" style="padding:16px 18px">
+    <div class="modal-body" style="padding:16px 18px;max-height:70vh;overflow-y:auto">
       <div class="yr-field"><label>Any</label><input type="number" id="yr-input-year" min="2000" max="2100"></div>
-      <div class="yr-field"><label>Total despesa anual (€)</label><input type="number" id="yr-input-total" min="0"></div>
       <div class="yr-field"><label>Total ingressos anual (€) <span style="color:#bbb;font-weight:400">(opcional)</span></label><input type="number" id="yr-input-income" min="0"></div>
+      <div style="font-size:11px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.5px;margin:14px 0 8px;">Despesa per categoria</div>
+      <div id="yr-cat-fields"></div>
+      <div class="yr-field" style="margin-top:12px;padding-top:12px;border-top:1px solid #eee">
+        <label>Total despesa anual (€) <span style="color:#bbb;font-weight:400">— es calcula sol si omplis les categories</span></label>
+        <input type="number" id="yr-input-total" min="0" placeholder="O introdueix el total directament">
+      </div>
     </div>
     <div class="modal-footer">
       <button id="yr-del-btn" class="modal-btn" style="background:#ffeaea;color:#c62828;margin-right:auto;display:none" onclick="deleteHistYear()">🗑 Eliminar</button>
@@ -920,10 +925,10 @@ function renderHistory(){
     </div>`;
   }).join("");
 
-  // Category comparison table (by year)
+  // Category comparison table (by year) — with monthly average
   let cth=`<tr><th class="hl">CATEGORIA</th>`;
-  years.forEach(y=>cth+=`<th class="${y===YEAR?'cur':''}">${y}</th>`);
-  if(years.length>=2) cth+=`<th>∆ últim</th>`;
+  years.forEach(y=>cth+=`<th class="${y===YEAR?'cur':''}">${y} (total)</th><th class="${y===YEAR?'cur':''}" style="color:#888">${y} (mit/mes)</th>`);
+  if(years.length>=2) cth+=`<th>∆ últim any</th>`;
   cth+=`</tr>`;
   document.getElementById("cat-comp-thead").innerHTML=cth;
 
@@ -938,7 +943,12 @@ function renderHistory(){
     if(yearTots.every(v=>v===null||v===0)) return;
     const cc=cat.color;
     ctb+=`<tr><td class="hl"><span class="cat-dot" style="background:${cc};display:inline-block;margin-right:5px;vertical-align:middle"></span>${esc(cat.name)}</td>`;
-    yearTots.forEach((v,yi)=>{ ctb+=`<td class="${years[yi]===YEAR?'cur':''}">${v!=null?fmtE(v):'<span style="color:#ccc">—</span>'}</td>`; });
+    yearTots.forEach((v,yi)=>{
+      const cur=years[yi]===YEAR;
+      const avg=v!=null?v/12:null;
+      ctb+=`<td class="${cur?'cur':''}">${v!=null?fmtE(v):'<span style="color:#ccc">—</span>'}</td>`;
+      ctb+=`<td class="${cur?'cur':''}" style="color:#888;font-size:11px">${avg!=null?fmtE(avg):'<span style="color:#ccc">—</span>'}</td>`;
+    });
     if(years.length>=2){
       const last=yearTots[yearTots.length-1], prev2=yearTots[yearTots.length-2];
       if(last!=null&&prev2!=null){const d=last-prev2;ctb+=`<td class="${d>0?'neg':d<0?'pos':'neu'}">${d>=0?'+':''}${fmtE(Math.abs(d))}</td>`;}
@@ -948,7 +958,10 @@ function renderHistory(){
   });
   // Totals row
   ctb+=`<tr class="tot-row"><td class="hl">TOTAL</td>`;
-  years.forEach(y=>{ ctb+=`<td class="${y===YEAR?'cur':''}">${fmtE(yearExpTotal(y))}</td>`; });
+  years.forEach(y=>{
+    const v=yearExpTotal(y), avg=v/12;
+    ctb+=`<td class="${y===YEAR?'cur':''}">${fmtE(v)}</td><td class="${y===YEAR?'cur':''}" style="color:#888;font-size:11px">${fmtE(avg)}</td>`;
+  });
   if(years.length>=2){
     const last=yearExpTotal(years[years.length-1]),prev2=yearExpTotal(years[years.length-2]);
     const d=last-prev2; ctb+=`<td class="${d>0?'neg':d<0?'pos':'neu'}">${d>=0?'+':''}${fmtE(Math.abs(d))}</td>`;
@@ -976,6 +989,28 @@ function renderHistory(){
 }
 
 // ── Year modal ──
+function renderYrCatFields(byCat){
+  document.getElementById("yr-cat-fields").innerHTML = cats.map(c=>`
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+      <span class="cat-dot" style="background:${c.color};display:inline-block;flex-shrink:0"></span>
+      <label style="flex:1;font-size:12px;color:#555;font-weight:600">${esc(c.name)}</label>
+      <input type="number" min="0" placeholder="0"
+        id="yr-cat-${c.name.replace(/\s/g,'_')}"
+        value="${byCat&&byCat[c.name]!=null?byCat[c.name]:''}"
+        style="width:110px;border:1px solid #ddd;border-radius:5px;padding:5px 8px;font-size:13px;font-family:inherit"
+        oninput="updateYrTotal()">
+    </div>`).join("");
+}
+
+function updateYrTotal(){
+  let sum=0;
+  cats.forEach(c=>{
+    const el=document.getElementById("yr-cat-"+c.name.replace(/\s/g,'_'));
+    if(el) sum+=parseFloat(el.value)||0;
+  });
+  if(sum>0) document.getElementById("yr-input-total").value=sum.toFixed(2);
+}
+
 function addHistoryYear(){
   editingYrKey=null;
   document.getElementById("yr-modal-title").textContent="➕ Afegir any passat";
@@ -983,6 +1018,7 @@ function addHistoryYear(){
   document.getElementById("yr-input-total").value="";
   document.getElementById("yr-input-income").value="";
   document.getElementById("yr-del-btn").style.display="none";
+  renderYrCatFields({});
   document.getElementById("yr-modal-overlay").classList.add("open");
   setTimeout(()=>document.getElementById("yr-input-year").focus(),50);
 }
@@ -994,18 +1030,29 @@ function editHistYear(y){
   document.getElementById("yr-input-total").value=h.total||"";
   document.getElementById("yr-input-income").value=h.income||"";
   document.getElementById("yr-del-btn").style.display="inline-block";
+  renderYrCatFields(h.byCat||{});
   document.getElementById("yr-modal-overlay").classList.add("open");
 }
 function closeYrModal(){ document.getElementById("yr-modal-overlay").classList.remove("open"); }
 function saveHistYear(){
   const y=parseInt(document.getElementById("yr-input-year").value);
-  const t=parseFloat(document.getElementById("yr-input-total").value);
   const inc=parseFloat(document.getElementById("yr-input-income").value)||0;
   if(!y||isNaN(y)||y<1990||y>2100){alert("Any no vàlid.");return;}
   if(y===YEAR){alert(`${YEAR} és l'any actual.`);return;}
-  if(isNaN(t)||t<0){alert("Import no vàlid.");return;}
+  // collect per-cat values
+  const byCat={};
+  let catSum=0;
+  cats.forEach(c=>{
+    const el=document.getElementById("yr-cat-"+c.name.replace(/\s/g,'_'));
+    const v=el?parseFloat(el.value)||0:0;
+    if(v>0){byCat[c.name]=v; catSum+=v;}
+  });
+  // total: prefer manual field, fallback to sum of cats
+  let t=parseFloat(document.getElementById("yr-input-total").value);
+  if(isNaN(t)||t<=0) t=catSum;
+  if(t<=0){alert("Introdueix almenys el total o alguna categoria.");return;}
   histYears=histYears.filter(h=>h.year!==y);
-  histYears.push({year:y,total:t,income:inc});
+  histYears.push({year:y,total:t,income:inc,byCat:Object.keys(byCat).length?byCat:null});
   histYears.sort((a,b)=>a.year-b.year);
   save(); closeYrModal(); renderHistory();
 }
