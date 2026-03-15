@@ -443,21 +443,21 @@ const DEFAULT_INC_CATS = [
 ];
 
 const DEFAULT_ROWS = [
-  {id:1,  concept:"Lloguer / Hipoteca", cat:"Habitatge",        vals:[900,900,900,900,900,900,900,900,900,900,900,900]},
-  {id:2,  concept:"Comunitat",          cat:"Habitatge",        vals:[60,60,60,60,60,60,60,60,60,60,60,60]},
-  {id:3,  concept:"Electricitat",       cat:"Subministraments", vals:[90,85,70,60,50,45,55,65,60,70,80,95]},
-  {id:4,  concept:"Gas",                cat:"Subministraments", vals:[80,75,60,30,10,0,0,0,10,30,60,80]},
-  {id:5,  concept:"Aigua",              cat:"Subministraments", vals:[20,20,20,20,20,20,20,20,20,20,20,20]},
-  {id:6,  concept:"Internet + Mòbil",   cat:"Subministraments", vals:[65,65,65,65,65,65,65,65,65,65,65,65]},
-  {id:7,  concept:"Supermercat",        cat:"Alimentació",      vals:[350,350,350,350,350,350,350,350,350,350,350,350]},
-  {id:8,  concept:"Restaurants",        cat:"Alimentació",      vals:[100,100,100,100,100,120,120,120,100,100,100,120]},
-  {id:9,  concept:"Transport públic",   cat:"Transport",        vals:[40,40,40,40,40,40,40,40,40,40,40,40]},
-  {id:10, concept:"Combustible",        cat:"Transport",        vals:[70,70,70,70,70,70,70,70,70,70,70,70]},
-  {id:11, concept:"Metge / Farmàcia",   cat:"Salut",            vals:[30,30,30,30,30,30,30,30,30,30,30,30]},
-  {id:12, concept:"Netflix",            cat:"Subscripcions",    vals:[18,18,18,18,18,18,18,18,18,18,18,18]},
-  {id:13, concept:"Spotify",            cat:"Subscripcions",    vals:[11,11,11,11,11,11,11,11,11,11,11,11]},
-  {id:14, concept:"Gimnàs",             cat:"Oci & Cultura",    vals:[40,40,40,40,40,40,40,40,40,40,40,40]},
-  {id:15, concept:"Estalvi",            cat:"Estalvi",          vals:[200,200,200,200,200,200,200,200,200,200,200,200]},
+  {id:1,  concept:"Lloguer / Hipoteca", cat:"Habitatge",        vals:[0,0,0,0,0,0,0,0,0,0,0,0]},
+  {id:2,  concept:"Comunitat",          cat:"Habitatge",        vals:[0,0,0,0,0,0,0,0,0,0,0,0]},
+  {id:3,  concept:"Electricitat",       cat:"Subministraments", vals:[0,0,0,0,0,0,0,0,0,0,0,0]},
+  {id:4,  concept:"Gas",                cat:"Subministraments", vals:[0,0,0,0,0,0,0,0,0,0,0,0]},
+  {id:5,  concept:"Aigua",              cat:"Subministraments", vals:[0,0,0,0,0,0,0,0,0,0,0,0]},
+  {id:6,  concept:"Internet + Mòbil",   cat:"Subministraments", vals:[0,0,0,0,0,0,0,0,0,0,0,0]},
+  {id:7,  concept:"Supermercat",        cat:"Alimentació",      vals:[0,0,0,0,0,0,0,0,0,0,0,0]},
+  {id:8,  concept:"Restaurants",        cat:"Alimentació",      vals:[0,0,0,0,0,0,0,0,0,0,0,0]},
+  {id:9,  concept:"Transport públic",   cat:"Transport",        vals:[0,0,0,0,0,0,0,0,0,0,0,0]},
+  {id:10, concept:"Combustible",        cat:"Transport",        vals:[0,0,0,0,0,0,0,0,0,0,0,0]},
+  {id:11, concept:"Metge / Farmàcia",   cat:"Salut",            vals:[0,0,0,0,0,0,0,0,0,0,0,0]},
+  {id:12, concept:"Netflix",            cat:"Subscripcions",    vals:[0,0,0,0,0,0,0,0,0,0,0,0]},
+  {id:13, concept:"Spotify",            cat:"Subscripcions",    vals:[0,0,0,0,0,0,0,0,0,0,0,0]},
+  {id:14, concept:"Gimnàs",             cat:"Oci & Cultura",    vals:[0,0,0,0,0,0,0,0,0,0,0,0]},
+  {id:15, concept:"Estalvi",            cat:"Estalvi",          vals:[0,0,0,0,0,0,0,0,0,0,0,0]},
 ];
 const DEFAULT_INC_ROWS = [
   {id:101, concept:"Salari net",  cat:"Salari",    vals:[0,0,0,0,0,0,0,0,0,0,0,0]},
@@ -1123,7 +1123,18 @@ document.addEventListener("keydown",e=>{
   }
   if(/^[0-9.,]$/.test(e.key)&&selC>=0){
     const mc=isM?selMonth:selC; if(mc<0)return;
-    const row=filteredRows()[selR]; if(row){editing=true;const td=document.getElementById(cid(selR,selC));if(td){td.innerHTML=`<input type="number" class="r" value="${e.key}" onblur="commit(${selR},${selC})" onkeydown="ikey(event,${selR},${selC})">`;const inp=td.querySelector("input");inp.focus();inp.setSelectionRange(inp.value.length,inp.value.length);}}
+    const row=filteredRows()[selR]; if(!row)return;
+    e.preventDefault();
+    editing=true;
+    const td=document.getElementById(cid(selR,selC));
+    if(td){
+      td.innerHTML=`<input type="number" class="r" value="" onblur="commit(${selR},${selC})" onkeydown="ikey(event,${selR},${selC})">`;
+      const inp=td.querySelector("input");
+      inp.focus();
+      // Insert the typed digit cleanly
+      inp.value=e.key;
+      inp.setSelectionRange(inp.value.length,inp.value.length);
+    }
   }
 });
 function moveS(dr,dc){
