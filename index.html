@@ -638,25 +638,25 @@ function renderTableAnnual(){
   const groups={};
   fr.forEach((r,ri)=>{ if(!groups[r.cat])groups[r.cat]=[]; groups[r.cat].push({r,ri}); });
 
-  let html="";
+  let html="", rowNum=0;
   acats.forEach(cat=>{
     const grp=groups[cat.name]; if(!grp)return;
     if(flt==="Totes"){
       const gTot=grp.reduce((s,{r})=>s+rowTotal(r),0);
       html+=`<tr class="cat-group-header"><td colspan="17"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${cat.color};margin-right:6px;vertical-align:middle"></span>${esc(cat.name)}&ensp;<span style="font-weight:400;color:#bbb">${fmtE(gTot)}</span></td></tr>`;
     }
-    grp.forEach(({r,ri})=>{
-      const rTot=rowTotal(r);
-      html+=`<tr oncontextmenu="showCtx(event,${r.id});return false">`;
-      html+=`<td class="td-num">${ri+1}</td>`;
-      html+=`<td id="${cid(ri,-2)}" onclick="sel(${ri},-2)" ondblclick="startEdit(${ri},-2)"><div class="cell-inner">${esc(r.concept)}</div></td>`;
-      const cc=cat.color;
-      html+=`<td id="${cid(ri,-1)}" onclick="sel(${ri},-1)" ondblclick="startEdit(${ri},-1)"><div class="cell-inner"><span class="cat-pill" style="background:${cc}22;color:${cc}"><span class="cat-dot" style="background:${cc}"></span>${esc(r.cat)}</span></div></td>`;
+    grp.forEach(({r})=>{
+      rowNum++;
+      const rTot=rowTotal(r), cc=cat.color, rid=r.id;
+      html+=`<tr oncontextmenu="showCtx(event,${rid});return false">`;
+      html+=`<td class="td-num">${rowNum}</td>`;
+      html+=`<td id="c_${rid}_-2" onclick="trackClick(${rid},-2);editById(${rid},-2)" ondblclick="editById(${rid},-2)"><div class="cell-inner">${esc(r.concept)}</div></td>`;
+      html+=`<td id="c_${rid}_-1" onclick="trackClick(${rid},-1);editById(${rid},-1)" ondblclick="editById(${rid},-1)"><div class="cell-inner"><span class="cat-pill" style="background:${cc}22;color:${cc}"><span class="cat-dot" style="background:${cc}"></span>${esc(r.cat)}</span></div></td>`;
       for(let mi=0;mi<12;mi++){
         const v=r.vals[mi]||0;
-        html+=`<td id="${cid(ri,mi)}" class="${mi===CUR_M?(inc?'td-curm-inc':'td-curm'):''}" onclick="sel(${ri},${mi})" ondblclick="startEdit(${ri},${mi})"><div class="cell-inner r${v?'':' zero'}">${v?fmt(v):''}</div></td>`;
+        html+=`<td id="c_${rid}_${mi}" class="${mi===CUR_M?(inc?'td-curm-inc':'td-curm'):''}" onclick="trackClick(${rid},${mi});editById(${rid},${mi})" ondblclick="editById(${rid},${mi})"><div class="cell-inner r${v?'':' zero'}">${v?fmt(v):''}</div></td>`;
       }
-      html+=`<td class="td-row-tot">${fmtE(rTot)}</td><td class="td-del"><button onclick="delRow(${r.id})">×</button></td></tr>`;
+      html+=`<td class="td-row-tot">${fmtE(rTot)}</td><td class="td-del"><button onclick="delRow(${rid})">×</button></td></tr>`;
     });
   });
 
@@ -666,7 +666,6 @@ function renderTableAnnual(){
   html+=`<td class="${tgt}">${fmtE(grand)}</td><td></td></tr>`;
   html+=`<tr class="add-row"><td colspan="17"><button onclick="addRow()">+ Afegir fila nova</button></td></tr>`;
   document.getElementById("tbody").innerHTML=html;
-  reapplySel();
 }
 
 // ── Monthly table ──
@@ -688,24 +687,24 @@ function renderTableMonthly(){
   const grand=activeRows().reduce((s,r)=>s+rowTotal(r),0);
 
   const groups={};
-  fr.forEach((r,ri)=>{ if(!groups[r.cat])groups[r.cat]=[]; groups[r.cat].push({r,ri}); });
+  fr.forEach(r=>{ if(!groups[r.cat])groups[r.cat]=[]; groups[r.cat].push(r); });
 
-  let html="";
+  let html="", rowNum=0;
   acats.forEach(cat=>{
     const grp=groups[cat.name]; if(!grp)return;
     if(flt==="Totes"){
-      const gM=grp.reduce((s,{r})=>s+(r.vals[selMonth]||0),0);
+      const gM=grp.reduce((s,r)=>s+(r.vals[selMonth]||0),0);
       html+=`<tr class="cat-group-header"><td colspan="6"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${cat.color};margin-right:6px;vertical-align:middle"></span>${esc(cat.name)}&ensp;<span style="font-weight:400;color:#bbb">${fmtE(gM)}</span></td></tr>`;
     }
-    grp.forEach(({r,ri})=>{
-      const v=r.vals[selMonth]||0, rTot=rowTotal(r);
-      const cc=cat.color;
-      html+=`<tr oncontextmenu="showCtx(event,${r.id});return false">`;
-      html+=`<td class="td-num">${ri+1}</td>`;
-      html+=`<td id="${cid(ri,-2)}" onclick="sel(${ri},-2)" ondblclick="startEdit(${ri},-2)"><div class="cell-inner">${esc(r.concept)}</div></td>`;
-      html+=`<td id="${cid(ri,-1)}" onclick="sel(${ri},-1)" ondblclick="startEdit(${ri},-1)"><div class="cell-inner"><span class="cat-pill" style="background:${cc}22;color:${cc}"><span class="cat-dot" style="background:${cc}"></span>${esc(r.cat)}</span></div></td>`;
-      html+=`<td id="${cid(ri,selMonth)}" class="${inc?'td-curm-inc':'td-curm'}" onclick="sel(${ri},${selMonth})" ondblclick="startEdit(${ri},${selMonth})"><div class="cell-inner r${v?'':' zero'}">${v?fmt(v):''}</div></td>`;
-      html+=`<td class="td-row-tot">${fmtE(rTot)}</td><td class="td-del"><button onclick="delRow(${r.id})">×</button></td></tr>`;
+    grp.forEach(r=>{
+      rowNum++;
+      const v=r.vals[selMonth]||0, rTot=rowTotal(r), cc=cat.color, rid=r.id;
+      html+=`<tr oncontextmenu="showCtx(event,${rid});return false">`;
+      html+=`<td class="td-num">${rowNum}</td>`;
+      html+=`<td id="c_${rid}_-2" onclick="trackClick(${rid},-2);editById(${rid},-2)" ondblclick="editById(${rid},-2)"><div class="cell-inner">${esc(r.concept)}</div></td>`;
+      html+=`<td id="c_${rid}_-1" onclick="trackClick(${rid},-1);editById(${rid},-1)" ondblclick="editById(${rid},-1)"><div class="cell-inner"><span class="cat-pill" style="background:${cc}22;color:${cc}"><span class="cat-dot" style="background:${cc}"></span>${esc(r.cat)}</span></div></td>`;
+      html+=`<td id="c_${rid}_${selMonth}" class="${inc?'td-curm-inc':'td-curm'}" onclick="trackClick(${rid},${selMonth});editById(${rid},${selMonth})" ondblclick="editById(${rid},${selMonth})"><div class="cell-inner r${v?'':' zero'}">${v?fmt(v):''}</div></td>`;
+      html+=`<td class="td-row-tot">${fmtE(rTot)}</td><td class="td-del"><button onclick="delRow(${rid})">×</button></td></tr>`;
     });
   });
 
@@ -713,7 +712,6 @@ function renderTableMonthly(){
   html+=`<tr class="totals-row"><td class="tn"></td><td class="tl">TOTAL</td><td class="tl"></td><td class="${tcm}">${fmtE(monthTotal)}</td><td class="${tgt}">${fmtE(grand)}</td><td></td></tr>`;
   html+=`<tr class="add-row"><td colspan="6"><button onclick="addRow()">+ Afegir fila nova</button></td></tr>`;
   document.getElementById("tbody").innerHTML=html;
-  reapplySel();
 }
 
 // ── Monthly summary cards ──
@@ -1064,88 +1062,93 @@ function deleteHistYear(){
 }
 
 // ═══════════════════════════════════════════════
-// SELECTION & EDITING
+// EDITING — by row ID (no index confusion)
 // ═══════════════════════════════════════════════
-function reapplySel(){ if(selR<0)return; const el=document.getElementById(cid(selR,selC)); if(el)el.classList.add("selected"); }
-function sel(r,c){ document.querySelectorAll("td.selected").forEach(e=>e.classList.remove("selected")); selR=r;selC=c; const el=document.getElementById(cid(r,c)); if(el)el.classList.add("selected"); updateStatus(); }
+function reapplySel(){} // no longer needed
+function sel(){}        // no longer needed
 
-function startEdit(ri,c){
-  sel(ri,c); editing=true;
-  const fr=filteredRows(), row=fr[ri]; if(!row)return;
-  const td=document.getElementById(cid(ri,c)); if(!td)return;
-  const mc=(currentView==="monthly"||currentView==="inc-monthly")?selMonth:c;
-  if(c===-1){
-    const opts=catNames().map(n=>`<option${n===row.cat?" selected":""}>${esc(n)}</option>`).join("");
-    td.innerHTML=`<select onblur="commit(${ri},${c})" onchange="commit(${ri},${c})">${opts}</select>`;
+function findRowById(rid){
+  return rows.find(r=>r.id===rid) || incRows.find(r=>r.id===rid) || null;
+}
+function findDatasetById(rid){
+  if(rows.find(r=>r.id===rid)) return rows;
+  if(incRows.find(r=>r.id===rid)) return incRows;
+  return null;
+}
+
+function editById(rid, col){
+  // col: -2=concept, -1=category, 0-11=month index
+  const row = findRowById(rid);
+  if(!row) return;
+  const tdId = `c_${rid}_${col}`;
+  const td = document.getElementById(tdId);
+  if(!td) return;
+
+  // clear any other active inputs first
+  document.querySelectorAll("td input, td select").forEach(el=>{
+    const parentTd = el.closest("td");
+    if(parentTd && parentTd.id !== tdId) parentTd.innerHTML = parentTd._origHTML || "";
+  });
+
+  if(col === -1){
+    // Category select
+    const opts = activeCats().map(c=>`<option value="${escA(c.name)}"${c.name===row.cat?" selected":""}>${esc(c.name)}</option>`).join("");
+    td.innerHTML=`<select onchange="commitById(${rid},${col},this.value)" onblur="commitById(${rid},${col},this.value)">${opts}</select>`;
     td.querySelector("select").focus();
+  } else if(col === -2){
+    // Concept text
+    td.innerHTML=`<input type="text" value="${escA(row.concept)}" onblur="commitById(${rid},${col},this.value)" onkeydown="if(event.key==='Enter'||event.key==='Tab'){commitById(${rid},${col},this.value);event.preventDefault();}if(event.key==='Escape'){renderAll();}">`;
+    const inp=td.querySelector("input"); inp.focus(); inp.select();
   } else {
-    const val=c===-2?row.concept:(row.vals[mc]||"");
-    td.innerHTML=`<input type="${c===-2?'text':'number'}" class="${c>=0?'r':''}" value="${escA(String(val))}" onblur="commit(${ri},${c})" onkeydown="ikey(event,${ri},${c})">`;
+    // Month value
+    const mc = (currentView==="monthly"||currentView==="inc-monthly") ? selMonth : col;
+    const cur = row.vals[mc]||0;
+    td.innerHTML=`<input type="number" class="r" value="${cur||''}" placeholder="0" onblur="commitById(${rid},${mc},this.value)" onkeydown="if(event.key==='Enter'||event.key==='Tab'){commitById(${rid},${mc},this.value);event.preventDefault();}if(event.key==='Escape'){renderAll();}">`;
     const inp=td.querySelector("input"); inp.focus(); inp.select();
   }
 }
 
-function commit(ri,c){
-  if(!editing)return; editing=false;
-  const fr=filteredRows(), row=fr[ri]; if(!row){renderAll();return;}
-  const td=document.getElementById(cid(ri,c)); if(!td)return;
-  const inp=td.querySelector("input")||td.querySelector("select"); if(!inp)return;
-  const val=inp.value;
-  const ar=activeRows();
-  const idx=ar.findIndex(r=>r.id===row.id); if(idx<0)return;
-  const mc=(currentView==="monthly"||currentView==="inc-monthly")?selMonth:c;
-  if(c===-2)      ar[idx].concept=val.trim()||"Sense nom";
-  else if(c===-1) ar[idx].cat=val;
-  else            ar[idx].vals[mc]=parseFloat(val.replace(",","."))||0;
-  save(); renderAll(); sel(ri,c);
+function commitById(rid, col, val){
+  const ds = findDatasetById(rid);
+  if(!ds) return;
+  const idx = ds.findIndex(r=>r.id===rid);
+  if(idx<0) return;
+  if(col===-2)      ds[idx].concept = (val||"").trim() || "Sense nom";
+  else if(col===-1) ds[idx].cat = val;
+  else              ds[idx].vals[col] = parseFloat(String(val).replace(",","."))||0;
+  save();
+  renderAll();
 }
 
-function ikey(e,ri,c){
-  if(e.key==="Enter"){commit(ri,c);moveS(1,0);e.preventDefault();}
-  if(e.key==="Tab")  {commit(ri,c);moveS(0,e.shiftKey?-1:1);e.preventDefault();}
-  if(e.key==="Escape"){editing=false;renderAll();sel(ri,c);}
-}
-
-const COLS_A=[-2,-1,0,1,2,3,4,5,6,7,8,9,10,11];
-const COLS_M=[-2,-1,"m"];
-document.addEventListener("keydown",e=>{
-  if(editing)return; if(selR<0)return;
-  const isM=currentView==="monthly"||currentView==="inc-monthly";
-  const cols=isM?COLS_M:COLS_A;
-  if(e.key==="ArrowDown") {moveS(1,0);e.preventDefault();}
-  if(e.key==="ArrowUp")   {moveS(-1,0);e.preventDefault();}
-  if(e.key==="ArrowRight"){moveS(0,1);e.preventDefault();}
-  if(e.key==="ArrowLeft") {moveS(0,-1);e.preventDefault();}
-  if(e.key==="Tab")       {moveS(0,e.shiftKey?-1:1);e.preventDefault();}
-  if(e.key==="Enter")     {startEdit(selR,selC);e.preventDefault();}
-  if((e.key==="Delete"||e.key==="Backspace")&&selC>=0){
-    const row=filteredRows()[selR]; if(row){const mc=isM?selMonth:selC;const ar=activeRows();const i=ar.findIndex(r=>r.id===row.id);if(i>=0){ar[i].vals[mc]=0;save();renderAll();sel(selR,selC);}}
-  }
-  if(/^[0-9.,]$/.test(e.key)&&selC>=0){
-    const mc=isM?selMonth:selC; if(mc<0)return;
-    const row=filteredRows()[selR]; if(!row)return;
-    e.preventDefault();
-    editing=true;
-    const td=document.getElementById(cid(selR,selC));
-    if(td){
-      td.innerHTML=`<input type="number" class="r" value="" onblur="commit(${selR},${selC})" onkeydown="ikey(event,${selR},${selC})">`;
-      const inp=td.querySelector("input");
-      inp.focus();
-      // Insert the typed digit cleanly
-      inp.value=e.key;
-      inp.setSelectionRange(inp.value.length,inp.value.length);
+// Keyboard delete on selected cell — simplified: just track last clicked cell
+let lastRid=null, lastCol=null;
+document.addEventListener("keydown", e=>{
+  if(document.querySelector("td input, td select")) return; // editing active
+  if(lastRid===null) return;
+  if(e.key==="Delete"||e.key==="Backspace"){
+    if(lastCol>=0){
+      const ds=findDatasetById(lastRid); if(!ds)return;
+      const idx=ds.findIndex(r=>r.id===lastRid); if(idx<0)return;
+      const mc=(currentView==="monthly"||currentView==="inc-monthly")?selMonth:lastCol;
+      ds[idx].vals[mc]=0; save(); renderAll();
+      e.preventDefault();
     }
   }
+  if(/^[0-9.,]$/.test(e.key)&&lastCol>=0){
+    e.preventDefault();
+    const mc=(currentView==="monthly"||currentView==="inc-monthly")?selMonth:lastCol;
+    const tdId=`c_${lastRid}_${lastCol}`;
+    const td=document.getElementById(tdId); if(!td)return;
+    td.innerHTML=`<input type="number" class="r" value="" onblur="commitById(${lastRid},${mc},this.value)" onkeydown="if(event.key==='Enter'||event.key==='Tab'){commitById(${lastRid},${mc},this.value);event.preventDefault();}if(event.key==='Escape'){renderAll();}">`;
+    const inp=td.querySelector("input"); inp.focus(); inp.value=e.key; inp.setSelectionRange(1,1);
+  }
 });
-function moveS(dr,dc){
-  const fr=filteredRows(),maxR=fr.length-1;
-  const isM=currentView==="monthly"||currentView==="inc-monthly";
-  const cols=isM?COLS_M:COLS_A;
-  const ci=cols.findIndex(x=>x===selC||(x==="m"&&typeof selC==="number"&&selC>=0));
-  const nr=Math.max(0,Math.min(maxR,selR+dr));
-  const nc=Math.max(0,Math.min(cols.length-1,ci+dc));
-  sel(nr,cols[nc]==="m"?selMonth:cols[nc]);
-}
+
+// Track last clicked cell for keyboard support
+function trackClick(rid,col){ lastRid=rid; lastCol=col; }
+
+// Alias for context menu
+function startEdit(ri,c){} // kept for compatibility, not used
 
 // ═══════════════════════════════════════════════
 // ROW OPS
@@ -1212,8 +1215,8 @@ function delRow(id){
 }
 function showCtx(e,id){ ctxId=id; const m=document.getElementById("ctx-menu"); m.style.display="block"; m.style.left=e.clientX+"px"; m.style.top=e.clientY+"px"; }
 document.addEventListener("click",()=>{ document.getElementById("ctx-menu").style.display="none"; });
-function ctxEdit(){ const fr=filteredRows();const ri=fr.findIndex(r=>r.id===ctxId);if(ri>=0)startEdit(ri,-2); }
-function ctxDuplicate(){ const ar=activeRows();const i=ar.findIndex(r=>r.id===ctxId);if(i<0)return;const c={...ar[i],id:uid(),concept:ar[i].concept+" (còpia)",vals:[...ar[i].vals]};ar.splice(i+1,0,c);save();renderAll(); }
+function ctxEdit(){ editById(ctxId,-2); }
+function ctxDuplicate(){ const ar=findDatasetById(ctxId);if(!ar)return;const i=ar.findIndex(r=>r.id===ctxId);if(i<0)return;const c={...ar[i],id:uid(),concept:ar[i].concept+" (còpia)",vals:[...ar[i].vals]};ar.splice(i+1,0,c);save();renderAll(); }
 function ctxDelete(){ delRow(ctxId); }
 
 // ═══════════════════════════════════════════════
