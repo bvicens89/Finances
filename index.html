@@ -1175,13 +1175,9 @@ function addRow(){
           <label style="display:block;font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Concepte</label>
           <input id="qa-concept" type="text" placeholder="ex: Supermercat Mercadona" style="width:100%;border:1px solid #ddd;border-radius:6px;padding:8px 10px;font-size:14px;font-family:inherit">
         </div>
-        <div style="margin-bottom:12px">
+        <div style="margin-bottom:4px">
           <label style="display:block;font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Categoria</label>
           <select id="qa-cat" style="width:100%;border:1px solid #ddd;border-radius:6px;padding:8px 10px;font-size:14px;font-family:inherit;background:#fff">${catOpts}</select>
-        </div>
-        <div style="margin-bottom:4px">
-          <label style="display:block;font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Import mensual (€) <span style="font-weight:400;color:#bbb">— opcional, pots omplir-ho després</span></label>
-          <input id="qa-amount" type="number" min="0" placeholder="0" style="width:100%;border:1px solid #ddd;border-radius:6px;padding:8px 10px;font-size:14px;font-family:inherit">
         </div>
       </div>
       <div style="padding:12px 18px;border-top:1px solid #eee;display:flex;justify-content:flex-end;gap:8px">
@@ -1199,12 +1195,9 @@ function addRow(){
 function confirmAddRow(){
   const concept=(document.getElementById("qa-concept").value||"").trim();
   const cat=document.getElementById("qa-cat").value;
-  const amount=parseFloat(document.getElementById("qa-amount").value)||0;
   if(!concept){ document.getElementById("qa-concept").focus(); return; }
   document.getElementById("quick-add-modal").remove();
-  const vals=Array(12).fill(0);
-  if(amount>0) vals.fill(amount); // fill all months with same amount
-  const nr={id:uid(), concept, cat, vals};
+  const nr={id:uid(), concept, cat, vals:Array(12).fill(0)};
   const ar=activeRows();
   ar.push(nr);
   save();
@@ -1212,9 +1205,10 @@ function confirmAddRow(){
 }
 function delRow(id){
   if(!confirm("Eliminar aquesta fila?"))return;
-  if(isIncome()) incRows=incRows.filter(r=>r.id!==id);
+  // Find which dataset contains this id
+  if(incRows.some(r=>r.id===id)) incRows=incRows.filter(r=>r.id!==id);
   else rows=rows.filter(r=>r.id!==id);
-  selR=-1;selC=-1;save();renderAll();
+  selR=-1; selC=-1; save(); renderAll();
 }
 function showCtx(e,id){ ctxId=id; const m=document.getElementById("ctx-menu"); m.style.display="block"; m.style.left=e.clientX+"px"; m.style.top=e.clientY+"px"; }
 document.addEventListener("click",()=>{ document.getElementById("ctx-menu").style.display="none"; });
