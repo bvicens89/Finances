@@ -109,6 +109,10 @@ tr.tot-row td.tcm-i { background: #d4f0d4; }
 tr.tot-row td.tgt { background: #e4f5e4; color: #2a6e2a; font-size: 13px; }
 tr.tot-row td.tgt-i { background: #c8e8c8; color: #1a5e1a; font-size: 13px; }
 
+td.drag-handle { cursor: grab; color: #ccc; padding: 0 6px; user-select: none; font-size: 14px; }
+td.drag-handle:hover { color: #888; }
+tr.drag-over td { background: #deeaff !important; }
+
 tr.add-row td { padding: 0; }
 tr.add-row button { width: 100%; background: none; border: none; border-top: 1px dashed #ccc; padding: 10px 14px; font-size: 12px; color: #bbb; cursor: pointer; text-align: left; font-family: inherit; }
 tr.add-row button:hover { background: #f0f5ff; color: #4f8ef7; }
@@ -476,6 +480,7 @@ function renderAll(){
 
   // Header
   let th="<tr>";
+  th+=`<th class="thnum" style="width:20px"></th>`;
   th+=`<th class="thnum">#</th>`;
   th+=`<th class="thl">CONCEPTE</th>`;
   th+=`<th class="thcat">CATEGORIA</th>`;
@@ -505,12 +510,13 @@ function renderAll(){
     const grp=groups[cat.name]; if(!grp) return;
     if(!flt){
       const gTot = mon ? grp.reduce((s,r)=>s+(r.vals[selMonth]||0),0) : grp.reduce((s,r)=>s+rowTot(r),0);
-      html+=`<tr class="grp-hdr"><td colspan="${mon?6:17}"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${cat.color};margin-right:6px;vertical-align:middle"></span>${esc(cat.name)} <span style="font-weight:400;color:#bbb">${fmtE(gTot)}</span></td></tr>`;
+      html+=`<tr class="grp-hdr"><td colspan="${mon?7:18}"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${cat.color};margin-right:6px;vertical-align:middle"></span>${esc(cat.name)} <span style="font-weight:400;color:#bbb">${fmtE(gTot)}</span></td></tr>`;
     }
     grp.forEach(r=>{
       n++;
       const rid=r.id, cc=cat.color, rTot=rowTot(r);
-      html+=`<tr oncontextmenu="showCtx(event,${rid});return false">`;
+      html+=`<tr draggable="true" data-rid="${rid}" data-cat="${escA(cat.name)}" oncontextmenu="showCtx(event,${rid});return false" ondragstart="dragStart(event,${rid})" ondragover="dragOver(event)" ondrop="dragDrop(event,${rid})" ondragleave="dragLeave(event)">`;
+      html+=`<td class="drag-handle" title="Arrossega per reordenar">⠿</td>`;
       html+=`<td class="tdnum">${n}</td>`;
       html+=`<td id="td_${rid}_c"><div class="cell-view" onclick="openEdit(${rid},'c')">${esc(r.concept)}</div></td>`;
       html+=`<td id="td_${rid}_k"><div class="cell-view" onclick="openEdit(${rid},'k')"><span class="cat-pill" style="background:${cc}22;color:${cc}"><span class="cat-dot" style="background:${cc}"></span>${esc(r.cat)}</span></div></td>`;
@@ -531,7 +537,7 @@ function renderAll(){
 
   // Totals row
   const tcm=inc?'tcm-i':'tcm', tgt=inc?'tgt-i':'tgt';
-  html+=`<tr class="tot-row"><td></td><td class="tl">TOTAL</td><td class="tl"></td>`;
+  html+=`<tr class="tot-row"><td></td><td></td><td class="tl">TOTAL</td><td class="tl"></td>`;
   if(mon){
     html+=`<td class="${tcm}">${fmtE(mTots[0])}</td><td class="${tgt}">${fmtE(grand)}</td>`;
   } else {
@@ -539,7 +545,7 @@ function renderAll(){
     html+=`<td class="${tgt}">${fmtE(grand)}</td>`;
   }
   html+=`<td></td></tr>`;
-  html+=`<tr class="add-row"><td colspan="${mon?6:17}"><button onclick="addRow()">+ Afegir fila nova</button></td></tr>`;
+  html+=`<tr class="add-row"><td colspan="${mon?7:18}"><button onclick="addRow()">+ Afegir fila nova</button></td></tr>`;
 
   document.getElementById("tbody").innerHTML=html;
   document.getElementById("table-wrap").style.display="";
@@ -549,41 +555,51 @@ function renderAll(){
 
 // ══════════════════════════════════════════════
 // EDITING — by row ID, field key
-// openEdit(rowId, field)
-// field: 'c'=concept, 'k'=category, 0-11=month
 // ══════════════════════════════════════════════
+let _committing = false;
+
 function openEdit(rid, field){
   const row=findRow(rid); if(!row) return;
   const tdId=`td_${rid}_${field}`;
   const td=document.getElementById(tdId); if(!td) return;
 
-  // Commit any other open editor first
+  // Close any other open editor without committing (renderAll will be called after commit)
   document.querySelectorAll("td input,td select").forEach(el=>{
-    if(el.closest("td").id!==tdId) commitEdit(el);
+    const parentTd=el.closest("td");
+    if(parentTd && parentTd.id!==tdId){
+      _committing=true;
+      commitEdit(el);
+      _committing=false;
+    }
   });
 
   if(field==='k'){
-    // Category dropdown
     const ac=AC();
     const opts=ac.map(c=>`<option value="${escA(c.name)}"${c.name===row.cat?" selected":""}>${esc(c.name)}</option>`).join("");
-    td.innerHTML=`<select onchange="commitEdit(this)" onblur="commitEdit(this)" data-rid="${rid}" data-field="${field}">${opts}</select>`;
+    td.innerHTML=`<select onchange="doCommit(this)" onblur="doCommit(this)" data-rid="${rid}" data-field="${field}">${opts}</select>`;
     td.querySelector("select").focus();
   } else if(field==='c'){
-    // Concept text
-    td.innerHTML=`<input type="text" value="${escA(row.concept)}" data-rid="${rid}" data-field="${field}" onblur="commitEdit(this)" onkeydown="editKey(event,this)">`;
+    td.innerHTML=`<input type="text" value="${escA(row.concept)}" data-rid="${rid}" data-field="${field}" onblur="doCommit(this)" onkeydown="editKey(event,this)">`;
     const inp=td.querySelector("input"); inp.focus(); inp.select();
   } else {
-    // Month number
     const mi=parseInt(field);
     const cur=row.vals[mi]||0;
-    td.innerHTML=`<input type="number" class="r" value="${cur||''}" placeholder="0" data-rid="${rid}" data-field="${field}" onblur="commitEdit(this)" onkeydown="editKey(event,this)">`;
-    const inp=td.querySelector("input"); inp.focus(); if(cur) inp.select();
+    td.innerHTML=`<input type="number" class="r" value="${cur||''}" placeholder="0" data-rid="${rid}" data-field="${field}" onblur="doCommit(this)" onkeydown="editKey(event,this)">`;
+    const inp=td.querySelector("input"); inp.focus(); if(cur) inp.select(); else inp.value="";
   }
+}
+
+function doCommit(el){
+  if(_committing) return;
+  _committing=true;
+  commitEdit(el);
+  _committing=false;
 }
 
 function commitEdit(el){
   const rid=parseInt(el.dataset.rid);
   const field=el.dataset.field;
+  if(!rid||!field) return;
   const val=el.value;
   const ds=findDS(rid); if(!ds) return;
   const idx=ds.findIndex(r=>r.id===rid); if(idx<0) return;
@@ -597,8 +613,8 @@ function commitEdit(el){
 }
 
 function editKey(e,el){
-  if(e.key==="Enter"||e.key==="Tab"){ commitEdit(el); e.preventDefault(); }
-  if(e.key==="Escape"){ renderAll(); }
+  if(e.key==="Enter"||e.key==="Tab"){ e.preventDefault(); doCommit(el); }
+  if(e.key==="Escape"){ _committing=true; renderAll(); _committing=false; }
 }
 
 // ══════════════════════════════════════════════
@@ -947,6 +963,50 @@ function deleteHistYear(){ if(!editYrKey)return; if(!confirm(`Eliminar l'any ${e
 // ══════════════════════════════════════════════
 function exportData(){ const blob=new Blob([JSON.stringify({rows,cats,incRows,incCats,histYears},null,2)],{type:"application/json"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`finances-${new Date().toISOString().slice(0,10)}.json`; a.click(); }
 function importData(e){ const file=e.target.files[0];if(!file)return;const rd=new FileReader();rd.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(!d.rows||!d.cats){alert("Fitxer no vàlid.");return;}if(!confirm(`Importar "${file.name}"? Sobreescriurà les dades actuals.`))return;rows=d.rows;cats=d.cats;incRows=d.incRows||[];incCats=d.incCats||[];histYears=d.histYears||[];save();populateCatFilter(true);setView("annual");alert("✅ Importat correctament.");}catch{alert("Error llegint el fitxer.");}};rd.readAsText(file);e.target.value=""; }
+
+// ══════════════════════════════════════════════
+// DRAG TO REORDER
+// ══════════════════════════════════════════════
+let dragRid = null;
+
+function dragStart(e, rid){
+  dragRid = rid;
+  e.dataTransfer.effectAllowed = "move";
+}
+function dragOver(e){
+  e.preventDefault();
+  e.dataTransfer.dropEffect = "move";
+  const tr = e.currentTarget;
+  document.querySelectorAll("tr.drag-over").forEach(r=>r.classList.remove("drag-over"));
+  tr.classList.add("drag-over");
+}
+function dragLeave(e){
+  e.currentTarget.classList.remove("drag-over");
+}
+function dragDrop(e, targetRid){
+  e.preventDefault();
+  document.querySelectorAll("tr.drag-over").forEach(r=>r.classList.remove("drag-over"));
+  if(!dragRid || dragRid===targetRid) return;
+
+  const ds = findDS(dragRid);
+  if(!ds) return;
+
+  const dragRow = ds.find(r=>r.id===dragRid);
+  const targetRow = ds.find(r=>r.id===targetRid);
+  if(!dragRow || !targetRow) return;
+
+  // Only allow reorder within same category
+  if(dragRow.cat !== targetRow.cat){ alert("Només es pot reordenar dins de la mateixa categoria."); return; }
+
+  const fromIdx = ds.findIndex(r=>r.id===dragRid);
+  const toIdx   = ds.findIndex(r=>r.id===targetRid);
+  ds.splice(fromIdx, 1);
+  ds.splice(toIdx, 0, dragRow);
+
+  dragRid = null;
+  save();
+  renderAll();
+}
 
 // ══════════════════════════════════════════════
 // INIT
